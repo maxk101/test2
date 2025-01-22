@@ -1,0 +1,148 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hold That Button - Global Leaderboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #2C2C2C;
+      color: #FFF;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      flex-direction: column;
+    }
+    #game-container {
+      text-align: center;
+    }
+    #timer {
+      font-size: 24px;
+      margin-top: 20px;
+      color: #AAA;
+    }
+    #hold-button {
+      padding: 20px 40px;
+      font-size: 24px;
+      color: #FFF;
+      background-color: #555;
+      border: 4px solid #333;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    #hold-button:active {
+      background-color: #666;
+      border-color: #444;
+    }
+    #hold-button:focus {
+      outline: none;
+    }
+    #leaderboard {
+      margin-top: 30px;
+      font-size: 18px;
+      color: #AAA;
+    }
+    .leaderboard-entry {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <button id="hold-button">Hold Me!</button>
+    <div id="timer">Time: 00:00.000</div>
+    <div id="leaderboard">
+      <h3>Global Leaderboard</h3>
+      <div id="leaderboard-entries">Loading...</div>
+    </div>
+  </div>
+  <script>
+    const API_URL = 'https://<test-liard-beta-46.vercel.app>/api/leaderboard'; // Replace with your actual Vercel API URL
+
+    let timer = 0;
+    let timerInterval;
+    let isHolding = false;
+
+    const button = document.getElementById('hold-button');
+    const timerDisplay = document.getElementById('timer');
+    const leaderboardEntries = document.getElementById('leaderboard-entries');
+
+    button.addEventListener('mousedown', () => {
+      if (!isHolding) {
+        isHolding = true;
+        startTimer();
+      }
+    });
+
+    button.addEventListener('mouseup', () => {
+      stopTimer();
+    });
+
+    button.addEventListener('mouseleave', () => {
+      stopTimer();
+    });
+
+    function startTimer() {
+      timer = 0;
+      timerInterval = setInterval(() => {
+        timer += 0.01;
+        updateTimerDisplay();
+      }, 10);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      isHolding = false;
+      submitScore(timer);
+      timer = 0;
+      updateTimerDisplay();
+    }
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timer / 60);
+      const seconds = Math.floor(timer % 60);
+      const milliseconds = Math.floor((timer * 1000) % 1000);
+      timerDisplay.textContent = `Time: ${formatTime(minutes)}:${formatTime(seconds)}.${milliseconds.toString().padStart(3, '0')}`;
+    }
+
+    function formatTime(time) {
+      return time < 10 ? `0${time}` : time;
+    }
+
+    async function fetchLeaderboard() {
+      try {
+        const response = await fetch(`${API_URL}`);
+        const data = await response.json();
+        leaderboardEntries.innerHTML = data.map(entry => `
+          <div class="leaderboard-entry">${entry.name}: ${entry.time}s</div>
+        `).join('');
+      } catch (error) {
+        leaderboardEntries.textContent = 'Failed to load leaderboard.';
+        console.error('Error fetching leaderboard:', error);
+      }
+    }
+
+    async function submitScore(score) {
+      try {
+        const name = prompt('Enter your name for the leaderboard:');
+        if (!name) return;
+        await fetch(`${API_URL}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, time: score.toFixed(2) })
+        });
+        fetchLeaderboard();
+      } catch (error) {
+        console.error('Error submitting score:', error);
+      }
+    }
+
+    // Load the leaderboard on page load
+    fetchLeaderboard();
+  </script>
+</body>
+</html>
